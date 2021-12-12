@@ -1,32 +1,48 @@
-const {app, BrowserWindow} = require('electron')
+const { app, BrowserWindow, ipcMain } = require('electron')
+const windowStateKeeper = require('electron-window-state')
+const readItem = require('./readItem')
 
 let mainWindow
 
-function createWindow () {
+ipcMain.on('new-item', (e, itemUrl) => {
+    readItem( itemUrl, item  => {
+        e.sender.send('new-item-success', item)
+    })
+})
 
-  mainWindow = new BrowserWindow({
-    width: 1000, height: 800,
-    webPreferences: {
-      contextIsolation: false,
-      nodeIntegration: true
-    }
-  })
+function createWindow() {
 
-  mainWindow.loadFile('renderer/main.html')
+    let state = windowStateKeeper({
+        defaultWidth: 500, defaultHeight: 650
+    })
 
-  mainWindow.webContents.openDevTools();
+    mainWindow = new BrowserWindow({
+        x: state.x, y: state.y,
+        width: state.width, height: state.height,
+        minWidth: 350, maxWidth: 650, minHeight: 300,
+        webPreferences: {
+            contextIsolation: false,
+            nodeIntegration: true
+        }
+    })
 
-  mainWindow.on('closed',  () => {
-    mainWindow = null
-  })
+    mainWindow.loadFile('renderer/main.html')
+
+    state.manage(mainWindow)
+
+    mainWindow.webContents.openDevTools();
+
+    mainWindow.on('closed', () => {
+        mainWindow = null
+    })
 }
 
 app.on('ready', createWindow)
 
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') app.quit()
+    if (process.platform !== 'darwin') app.quit()
 })
 
 app.on('activate', () => {
-  if (mainWindow === null) createWindow()
+    if (mainWindow === null) createWindow()
 })
